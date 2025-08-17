@@ -71,8 +71,9 @@ class _ThinoListState extends State<ThinoList> {
                   ),
                   onDismissed: (_) async {
                     await box.delete(key);  // ← 実削除
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (!context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('削除しました')),
                     );
                   },
