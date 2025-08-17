@@ -11,6 +11,7 @@ void main() async {
   runApp(const MyApp());
 }
 
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
@@ -19,11 +20,18 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// このクラスは、メモを入力してローカルに保存するページです。
+// Hiveを使用して、メモの保存と表示を行います。
+// スワイプで削除も可能です。
 class CapturePage extends StatefulWidget {
   @override
   State<CapturePage> createState() => _CapturePageState();
 }
 
+// CapturePageの状態を管理するクラスです。
+// メモの入力、保存、表示、削除を行う。
+// Hiveを使用してローカルに保存されたメモを管理する。
+// メモは新しい順に表示され、スワイプで削除する。
 class _CapturePageState extends State<CapturePage> {
   final _c = TextEditingController();
 
@@ -43,7 +51,7 @@ class _CapturePageState extends State<CapturePage> {
 
   @override
   Widget build(BuildContext context) {
-    final box = Hive.box('notes'); // ← 統一済み
+    final box = Hive.box('notes'); 
     return Scaffold(
       appBar: AppBar(title: const Text('Quick Capture')),
       body: Column(
@@ -84,7 +92,7 @@ class _CapturePageState extends State<CapturePage> {
                   itemCount: entries.length,
                   itemBuilder: (_, i) {
                     final e = entries[i];
-                    final key = e.key;              // ← 削除に使用
+                    final key = e.key; //メモの削除・復元に使用
                     final value = Map<String, dynamic>.from(e.value);
 
                     // ▼ スワイプ削除（右→左）
@@ -97,11 +105,34 @@ class _CapturePageState extends State<CapturePage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: const Icon(Icons.delete, color: Colors.white),
                       ),
+                      // スワイプが完了したら、該当のメモを削除
+                      // 注意: 非同期処理のため、awaitを使用
                       onDismissed: (_) async {
-                        await notes.delete(key); // ← 実削除
+                        //　削除取消用にバックアップを保存
+                        final backupKey = key;
+                        final backupValue = Map<String, dynamic>.from(value);
+                        // メモを削除
+                        await notes.delete(backupKey);
+                        // スナックバーで削除完了を通知
                         if (!mounted) return;
+                         ScaffoldMessenger.of(context).clearSnackBars();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('削除しました')),
+                          SnackBar(
+                            content: Text('メモを削除しました: ${backupValue['text']}'),
+                            action: SnackBarAction(
+                              label: '元に戻す',
+                              // もとに戻すボタンが押されたら、削除を取り消す
+                              onPressed: () async {
+                                // 削除を取り消すために、バックアップから復元
+                                await notes.put(backupKey, backupValue);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('メモを復元しました')),
+                                );
+                              },
+                            ),
+                            // 取り消すまでの時間を用意
+                            duration: const Duration(seconds: 4),
+                          ),
                         );
                       },
                       child: ListTile(
