@@ -16,14 +16,14 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: CapturePage());
+    return const MaterialApp(home: CapturePage());
   }
 }
 
 // このクラスは、メモを入力してローカルに保存するページです。
 // Hiveを使用して、メモの保存と表示を行います。
-// スワイプで削除も可能です。
 class CapturePage extends StatefulWidget {
+  const CapturePage({super.key});
   @override
   State<CapturePage> createState() => _CapturePageState();
 }
@@ -43,6 +43,8 @@ class _CapturePageState extends State<CapturePage> {
       'text': line,
       'createdAt': DateTime.now().toIso8601String(),
     });
+     if (!context.mounted) return; // 画面が閉じている場合は何もしない
+    // 入力フィールドをクリア
     _c.clear();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$line \nを保存しました')),
@@ -114,9 +116,10 @@ class _CapturePageState extends State<CapturePage> {
                         // メモを削除
                         await notes.delete(backupKey);
                         // スナックバーで削除完了を通知
-                        if (!mounted) return;
-                         ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        if (!context.mounted) return; // 画面が閉じている場合は何もしない
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.clearSnackBars();
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text('メモを削除しました: ${backupValue['text']}'),
                             action: SnackBarAction(
@@ -125,7 +128,7 @@ class _CapturePageState extends State<CapturePage> {
                               onPressed: () async {
                                 // 削除を取り消すために、バックアップから復元
                                 await notes.put(backupKey, backupValue);
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                messenger.showSnackBar(
                                   SnackBar(content: Text('メモを復元しました')),
                                 );
                               },
