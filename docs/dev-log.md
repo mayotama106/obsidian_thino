@@ -1,7 +1,7 @@
 # 実装ログ
 
 ## 2025-08-17
-- 1.4 スワイプ削除 Step A を `lib/main.dart` に最小改修で導入。
+- 1.4 スワイプ削除を `lib/main.dart` に最小改修で導入。
   - Box名の不一致（`Notes`→`notes`）を修正。
   - `Dismissible` でスワイプ削除を実装、SnackBarで通知。
 - Git 連携 初期化:
