@@ -1,0 +1,126 @@
+// lib/main.dart
+
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'utils/thino_utils.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await Hive.openBox('notes');
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(home: CapturePage());
+  }
+}
+
+class CapturePage extends StatefulWidget {
+  @override
+  State<CapturePage> createState() => _CapturePageState();
+}
+
+class _CapturePageState extends State<CapturePage> {
+  final _c = TextEditingController();
+
+  Future<void> _save() async {
+    final line = toThinoLine(_c.text);
+    if (line.isEmpty) return;
+    final box = Hive.box('notes');
+    await box.add({
+      'text': line,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+    _c.clear();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$line \nを保存しました')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final box = Hive.box('notes'); // ← 統一済み
+    return Scaffold(
+      appBar: AppBar(title: const Text('Quick Capture')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _c,
+                  decoration: const InputDecoration(hintText: 'メモを入力'),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _save,
+                  child: const Text('ローカル保存'),
+                ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('保存したノート一覧'),
+          ),
+          Expanded(
+            child: ValueListenableBuilder(
+              valueListenable: box.listenable(),
+              builder: (context, Box notes, _) {
+                if (notes.isEmpty) {
+                  return const Center(child: Text("まだノートがありません"));
+                }
+
+                // ▼ ここを「entries（key,value）」にして新しい順に表示
+                final entries = notes.toMap().entries.toList()
+                  ..sort((a, b) => b.key.toString().compareTo(a.key.toString()));
+
+                return ListView.builder(
+                  itemCount: entries.length,
+                  itemBuilder: (_, i) {
+                    final e = entries[i];
+                    final key = e.key;              // ← 削除に使用
+                    final value = Map<String, dynamic>.from(e.value);
+
+                    // ▼ スワイプ削除（右→左）
+                    return Dismissible(
+                      key: ValueKey(key),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (_) async {
+                        await notes.delete(key); // ← 実削除
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('削除しました')),
+                        );
+                      },
+                      child: ListTile(
+                        title: Text(
+                          value['text']?.toString() ?? '',
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(value['createdAt']?.toString() ?? ''),
+                        trailing: const Icon(Icons.chevron_left), // スワイプ誘導
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
