@@ -39,6 +39,9 @@ class _CapturePageState extends State<CapturePage> {
     final line = toThinoLine(_c.text);
     if (line.isEmpty) return;
     final box = Hive.box('notes');
+     //await の前に Messenger を取得（context をまたがない）
+    final messenger = ScaffoldMessenger.of(context);
+
     await box.add({
       'text': line,
       'createdAt': DateTime.now().toIso8601String(),
@@ -46,7 +49,7 @@ class _CapturePageState extends State<CapturePage> {
      if (!context.mounted) return; // 画面が閉じている場合は何もしない
     // 入力フィールドをクリア
     _c.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(content: Text('$line \nを保存しました')),
     );
   }
@@ -113,11 +116,13 @@ class _CapturePageState extends State<CapturePage> {
                         //　削除取消用にバックアップを保存
                         final backupKey = key;
                         final backupValue = Map<String, dynamic>.from(value);
-                        // メモを削除
+
+                        //await の前に Messenger を取得（context をまたがない）
+                        final messenger = ScaffoldMessenger.of(context);
+                        
                         await notes.delete(backupKey);
                         // スナックバーで削除完了を通知
                         if (!context.mounted) return; // 画面が閉じている場合は何もしない
-                        final messenger = ScaffoldMessenger.of(context);
                         messenger.clearSnackBars();
                         messenger.showSnackBar(
                           SnackBar(

@@ -17,7 +17,7 @@ jobs:
       # Flutter セットアップ
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.35.1" # 使っているバージョンに合わせる
+          channel: "stable"
 
       # 依存解決
       - run: flutter pub get
