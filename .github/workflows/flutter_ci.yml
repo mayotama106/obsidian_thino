@@ -1,0 +1,26 @@
+name: Flutter CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ソースコード取得
+      - uses: actions/checkout@v3
+
+      # Flutter セットアップ
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.1" # 使っているバージョンに合わせる
+
+      # 依存解決
+      - run: flutter pub get
+
+      # 静的解析
+      - run: flutter analyze
