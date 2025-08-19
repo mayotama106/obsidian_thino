@@ -3,11 +3,13 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'utils/thino_utils.dart';
+import 'screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox('notes');
+  await Hive.openBox('settings');
   runApp(const MyApp());
 }
 
@@ -58,7 +60,20 @@ class _CapturePageState extends State<CapturePage> {
   Widget build(BuildContext context) {
     final box = Hive.box('notes'); 
     return Scaffold(
-      appBar: AppBar(title: const Text('Quick Capture')),
+    appBar: AppBar(
+      title: const Text('Quick Capture'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings),
+          tooltip: '設定',
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            );
+          },
+        ),
+      ],
+    ),
       body: Column(
         children: [
           Padding(
