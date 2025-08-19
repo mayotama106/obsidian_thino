@@ -35,30 +35,90 @@ class CapturePage extends StatefulWidget {
 class _CapturePageState extends State<CapturePage> {
   final _c = TextEditingController();
 
-  Future<void> _save() async {
-    final line = toThinoLine(_c.text);
-    if (line.isEmpty) return;
-    final box = Hive.box('notes');
-     //await の前に Messenger を取得（context をまたがない）
-    final messenger = ScaffoldMessenger.of(context);
+  bool _useAwait = true; // 実験フラグ（true: await あり / false: await なし）
 
-    await box.add({
-      'text': line,
-      'createdAt': DateTime.now().toIso8601String(),
-    });
-     if (!context.mounted) return; // 画面が閉じている場合は何もしない
-    // 入力フィールドをクリア
-    _c.clear();
-    messenger.showSnackBar(
-      SnackBar(content: Text('$line \nを保存しました')),
-    );
+Future<void> _save() async {
+  if (_useAwait) {
+    await _saveAwait();
+  } else {
+    await _saveNoAwait();
   }
+}
+
+// await を使う版（基準ケース）
+Future<void> _saveAwait() async {
+  final line = toThinoLine(_c.text);
+  if (line.isEmpty) return;
+
+  final box = Hive.box('notes');
+  final messenger = ScaffoldMessenger.of(context);
+
+  final startedAt = DateTime.now();
+  // ① 保存開始（await して完了を待つ）
+  print('[await] add start: $startedAt');
+  await box.add({
+    'text': line,
+    'createdAt': DateTime.now().toIso8601String(),
+  });
+  final endedAt = DateTime.now();
+  print('[await] add end  : $endedAt  (+${endedAt.difference(startedAt).inMilliseconds}ms)');
+
+  if (!mounted) return;
+  _c.clear();
+  messenger.showSnackBar(SnackBar(content: Text('[await] 保存完了: $line')));
+}
+
+// await を使わない版（実験用）
+Future<void> _saveNoAwait() async {
+  final line = toThinoLine(_c.text);
+  if (line.isEmpty) return;
+
+  final box = Hive.box('notes');
+  final messenger = ScaffoldMessenger.of(context);
+
+  final startedAt = DateTime.now();
+  // ① 保存開始（★ await しない：完了を待たずに次へ進む）
+  print('[noawait] add start: $startedAt');
+  // Future を変数に受けておく（エラー観測用）
+  final future = box.add({
+    'text': line,
+    'createdAt': DateTime.now().toIso8601String(),
+  });
+
+  // ② すぐ次へ（clear＆SnackBarが先に走る可能性）
+  if (!mounted) return;
+  _c.clear();
+  messenger.showSnackBar(SnackBar(content: Text('[noawait] すぐに保存完了を表示: $line')));
+
+  // ③ 実際の完了時刻をログ出力（例外確認）
+  future.then((_) {
+    final endedAt = DateTime.now();
+    print('[noawait] add end  : $endedAt  (+${endedAt.difference(startedAt).inMilliseconds}ms)');
+  }).catchError((e, st) {
+    print('[noawait] add error: $e');
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
     final box = Hive.box('notes'); 
     return Scaffold(
-      appBar: AppBar(title: const Text('Quick Capture')),
+    appBar: AppBar(
+      title: const Text('Quick Capture'),
+      actions: [
+        // 既存の設定アイコンがあればそのまま残す
+        Row(
+          children: [
+            const Text('await', style: TextStyle(fontSize: 12)),
+            Switch(
+              value: _useAwait,
+              onChanged: (v) => setState(() => _useAwait = v),
+            ),
+          ],
+        ),
+      ],
+    ),
       body: Column(
         children: [
           Padding(
